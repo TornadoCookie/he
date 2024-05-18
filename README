@@ -1,0 +1,9 @@
+He(lium): A build system for me and only me.
+
+Source structure:
+
+<Root>
+|->src - source files
+|->lib - libraries
+|->HeFile - "make"file
+

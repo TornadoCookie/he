@@ -1,0 +1,8 @@
+DefaultPlatform linux64
+UseRaylib False
+
+ExtraCFlag -Wno-unused-result
+
+Program he
+Source main.c
+

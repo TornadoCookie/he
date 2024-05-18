@@ -1,0 +1,28 @@
+Platform linux64
+IsRelease
+ExecExtension 
+LibExtension .so
+Compiler gcc
+RaylibLdFlag -lraylib
+
+Platform linux64-debug
+IsDebug
+ExecExtension -debug
+LibExtension -debug.so
+Compiler gcc
+RaylibLdFlag -lraylib
+
+Platform win64
+IsRelease
+ExecExtension .exe
+LibExtension .dll
+Compiler x86_64-w64-mingw32-gcc
+RaylibLdFlag -lraylibdll
+
+Platform win32
+IsRelease
+ExecExtension .exe
+LibExtension .dll
+Compiler i686-w64-mingw32-gcc
+RaylibLdFlag -lraylibdll
+
