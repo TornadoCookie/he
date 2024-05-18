@@ -1,4 +1,5 @@
-He(lium): A build system for me and only me.
+He(lium): A build system tailored for very specific programs made in raylib
+Read the code as to how it works.
 
 Source structure:
 
