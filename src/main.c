@@ -36,11 +36,19 @@ typedef struct HeSource {
     char *name;
 } HeSource;
 
+typedef enum {
+    PROGRAM_EXECUTABLE,
+    PROGRAM_LIBRARY,
+    PROGRAM_SOURCEGROUP,
+} ProgramType;
+
 typedef struct HeProgram {
     char *name;
     HeSource *sources;
     int sourceCount;
-    bool isLibrary;
+    ProgramType type;
+    char **sourceGroups;
+    int sourceGroupCount;
 } HeProgram;
 
 typedef struct HeFile {
@@ -144,20 +152,24 @@ void parsehefile()
         DoSettingString("RaylibVersion", file.raylibVersion);
         DoSettingBool("UseRaylib", file.useRaylib);
 
-        if (TextStartsWith(buf, "Program") || TextStartsWith(buf, "Library"))
+        if (TextStartsWith(buf, "Program") || TextStartsWith(buf, "Library") || TextStartsWith(buf, "SourceGroup"))
         {
             currentProgram = file.programCount;
             file.programCount++;
             file.programs = realloc(file.programs, file.programCount * sizeof(HeProgram));
             file.programs[currentProgram].sourceCount = 0;
             file.programs[currentProgram].sources = NULL;
-            file.programs[currentProgram].isLibrary = false;
-            if (TextStartsWith(buf, "Library")) file.programs[currentProgram].isLibrary = true;
+            file.programs[currentProgram].type = PROGRAM_EXECUTABLE;
+            file.programs[currentProgram].sourceGroups = NULL;
+            file.programs[currentProgram].sourceGroupCount = 0;
+            if (TextStartsWith(buf, "Library")) file.programs[currentProgram].type = PROGRAM_LIBRARY;
+            else if (TextStartsWith(buf, "SourceGroup")) file.programs[currentProgram].type = PROGRAM_SOURCEGROUP;
         }
         DoSettingString("Program", file.programs[currentProgram].name);
         DoSettingString("Library", file.programs[currentProgram].name);
+        DoSettingString("SourceGroup", file.programs[currentProgram].name);
 
-        if (TextStartsWith(buf, "Source"))
+        if (TextStartsWith(buf, "Source") && !TextStartsWith(buf, "SourceGroup"))
         {
             if (currentProgram == -1)
             {
@@ -171,6 +183,20 @@ void parsehefile()
         if (currentProgram != -1 && file.programs[currentProgram].sourceCount)
         {
             DoSettingString("Source", file.programs[currentProgram].sources[file.programs[currentProgram].sourceCount - 1].name);
+        }
+
+        if (TextStartsWith(buf, "UseSourceGroup"))
+        {
+            if (currentProgram == -1)
+            {
+                printf("warning: line %d: source group has no program attached\n", line);
+                continue;
+            }
+
+            file.programs[currentProgram].sourceGroupCount++;
+            file.programs[currentProgram].sourceGroups = realloc(file.programs[currentProgram].sourceGroups, file.programs[currentProgram].sourceGroupCount * sizeof(char*));
+
+            DoSettingString("UseSourceGroup", file.programs[currentProgram].sourceGroups[file.programs[currentProgram].sourceGroupCount - 1]);
         }
 
         if (TextStartsWith(buf, "Dependency"))
@@ -235,14 +261,14 @@ void genmakefile()
 
     for (int i = 0; i < file.programCount; i++)
     {
-        if (!file.programs[i].isLibrary) fprintf(makefile, "%s%s", file.programs[i].name, i != file.programCount - 1 ? " " : "");
+        if (file.programs[i].type == PROGRAM_EXECUTABLE) fprintf(makefile, "%s%s", file.programs[i].name, i != file.programCount - 1 ? " " : "");
     }
 
     fprintf(makefile, "\nLIBRARIES=");
 
     for (int i = 0; i < file.programCount; i++)
     {
-        if (file.programs[i].isLibrary) fprintf(makefile, "%s%s", file.programs[i].name, i != file.programCount - 1 ? " " : "");
+        if (file.programs[i].type == PROGRAM_LIBRARY) fprintf(makefile, "%s%s", file.programs[i].name, i != file.programCount - 1 ? " " : "");
     }
 
     fprintf(makefile, "\n\nall: $(DISTDIR) $(foreach prog, $(PROGRAMS), $(DISTDIR)/$(prog)$(EXEC_EXTENSION)) $(foreach lib, $(LIBRARIES), $(DISTDIR)/$(lib)$(LIB_EXTENSION))");
@@ -254,6 +280,7 @@ void genmakefile()
     for (int i = 0; i < file.dependencyCount; i++)
     {
         fprintf(makefile, "CFLAGS+=-Ilib/%s/src\n", file.dependencies[i]);
+        fprintf(makefile, "CFLAGS+=-Ilib/%s/include\n", file.dependencies[i]);
     }
     fprintf(makefile, "CFLAGS+=-D PLATFORM=\\\"$(PLATFORM)\\\"\n");
     for (int i = 0; i < file.extraCflagCount; i++)
@@ -274,13 +301,25 @@ void genmakefile()
         {
             fprintf(makefile, "%s_SOURCES+=src/%s\n", file.programs[i].name, file.programs[i].sources[j].name);
         }
-        fprintf(makefile, "\n$(DISTDIR)/%s$(%s): $(%s_SOURCES)\n", file.programs[i].name, file.programs[i].isLibrary ? "LIB_EXTENSION" : "EXEC_EXTENSION", file.programs[i].name);
-        fprintf(makefile, "\t$(CC) -o $@ $^ $(CFLAGS)%s $(LDFLAGS)\n\n", file.programs[i].isLibrary ? " -fPIC -shared" : "");
+        for (int j = 0; j < file.programs[i].sourceGroupCount; j++)
+        {
+            fprintf(makefile, "%s_SOURCES+=$(%s_SOURCES)\n", file.programs[i].name, file.programs[i].sourceGroups[j]);
+        }
+        if (file.programs[i].type != PROGRAM_SOURCEGROUP)
+        {
+            fprintf(makefile, "\n$(DISTDIR)/%s$(%s): $(%s_SOURCES)\n", file.programs[i].name, file.programs[i].type == PROGRAM_LIBRARY ? "LIB_EXTENSION" : "EXEC_EXTENSION", file.programs[i].name);
+            fprintf(makefile, "\t$(CC) -o $@ $^ $(CFLAGS)%s $(LDFLAGS)\n\n", file.programs[i].type == PROGRAM_LIBRARY ? " -fPIC -shared" : "");
+        }
+        else
+        {
+            fprintf(makefile, "\n");
+        }
     }
 
     fprintf(makefile, "clean:\n");
     for (int i = 0; i < file.programCount; i++)
     {
+        if (file.programs[i].type == PROGRAM_SOURCEGROUP) continue;
         fprintf(makefile, "\trm -f $(DISTDIR)/%s$(EXEC_EXTENSION)\n", file.programs[i].name);
     }
 
@@ -289,6 +328,7 @@ void genmakefile()
 
 int main(int argc, char **argv)
 {
+    printf("He v1.1\n");
     parseheplatforms();
     parsehefile();
     genmakefile();
