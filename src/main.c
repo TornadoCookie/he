@@ -62,6 +62,8 @@ typedef struct HeFile {
     int dependencyCount;
     char **extraCflags;
     int extraCflagCount;
+    char **nativeDependencies;
+    int nativeDependencyCount;
 } HeFile;
 
 HeFile file = {
@@ -128,8 +130,8 @@ void parseheplatforms()
         {
             platforms[currentPlatform].extraCflagCount++;
             platforms[currentPlatform].extraCflags = realloc(platforms[currentPlatform].extraCflags, platforms[currentPlatform].extraCflagCount * sizeof(char *));
+            DoSettingString("ExtraCFlag", platforms[currentPlatform].extraCflags[platforms[currentPlatform].extraCflagCount - 1]);
         }
-        DoSettingString("ExtraCFlag", platforms[currentPlatform].extraCflags[platforms[currentPlatform].extraCflagCount - 1]);
         fgets(buf, 512, heplatforms);
     }
 
@@ -205,6 +207,13 @@ void parsehefile()
             file.dependencies = realloc(file.dependencies, file.dependencyCount * sizeof(char *));
         }
         DoSettingString("Dependency", file.dependencies[file.dependencyCount - 1]);
+
+        if (TextStartsWith(buf, "NativeDependency"))
+        {
+            file.nativeDependencyCount++;
+            file.nativeDependencies = realloc(file.nativeDependencies, file.nativeDependencyCount * sizeof(char *));
+        }
+        DoSettingString("NativeDependency", file.nativeDependencies[file.nativeDependencyCount - 1]);
 
         if (TextStartsWith(buf, "ExtraCFlag"))
         {
@@ -295,6 +304,13 @@ void genmakefile()
         fprintf(makefile, "LDFLAGS+=-lm\nLDFLAGS+=-Llib/$(RAYLIB_NAME)/lib\nLDFLAGS+=$(RAYLIB_DLL)\n\n");
     }
 
+    for (int i = 0; i < file.nativeDependencyCount; i++)
+    {
+        fprintf(makefile, "%s_NAME=lib%s-$(PLATFORM)\n", file.nativeDependencies[i], file.nativeDependencies[i]);
+        fprintf(makefile, "CFLAGS+=-Ilib/$(%s_NAME)/include\nCFLAGS+=-Wl,-rpath,lib/$(%s_NAME)/lib\n", file.nativeDependencies[i], file.nativeDependencies[i]);
+        fprintf(makefile, "LDFLAGS+=-Llib/$(%s_NAME)/lib\nLDFLAGS+=-l%s\n\n", file.nativeDependencies[i], file.nativeDependencies[i]);
+    }
+
     for (int i = 0; i < file.programCount; i++)
     {
         for (int j = 0; j < file.programs[i].sourceCount; j++)
@@ -328,7 +344,7 @@ void genmakefile()
 
 int main(int argc, char **argv)
 {
-    printf("He v1.1\n");
+    printf("He v1.2\n");
     parseheplatforms();
     parsehefile();
     genmakefile();
