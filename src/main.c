@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdbool.h>
 
+#define VERSION_STRING "v1.3.1"
+
 #define TextStartsWith(text, startsWith) !strncmp(text, startsWith, strlen(startsWith))
 
 bool _DoSettingString(char *buf, char *settingName, char *fmt, char **settingProperty)
@@ -232,6 +234,8 @@ void genmakefile()
 {
     FILE *makefile = fopen("Makefile", "w");
 
+    fprintf(makefile, "# Generated using Helium " VERSION_STRING " (https://github.com/tornadocookie/he)\n\n");
+
     fprintf(makefile, "PLATFORM?=%s\n", file.defaultPlatform);
     fprintf(makefile, "DISTDIR?=%s\n\n", file.defaultDistDir);
     fprintf(makefile, ".PHONY: all\n\n");
@@ -287,16 +291,29 @@ void genmakefile()
         fprintf(makefile, "LDFLAGS+=-Llib/$(%s_NAME)/lib\nLDFLAGS+=-l%s", file.nativeDependencies[i], file.nativeDependencies[i]);
     }
 
-    fprintf(makefile, "\n\nall: $(DISTDIR) deps $(foreach prog, $(PROGRAMS), $(DISTDIR)/$(prog)$(EXEC_EXTENSION)) $(foreach lib, $(LIBRARIES), $(DISTDIR)/$(lib)$(LIB_EXTENSION))");
-    fprintf(makefile, "\n\n$(DISTDIR):\n");
-    fprintf(makefile, "\tmkdir -p $@\n\n");
+    fprintf(makefile, "\n\nall: $(DISTDIR) $(foreach prog, $(PROGRAMS), $(DISTDIR)/$(prog)$(EXEC_EXTENSION)) $(foreach lib, $(LIBRARIES), $(DISTDIR)/$(lib)$(LIB_EXTENSION))");
 
-    fprintf(makefile, "deps:\n");
-    fprintf(makefile, "\tmkdir -p $(DISTDIR)/lib\n");
-    for (int i = 0; i < file.nativeDependencyCount; i++)
+    if (file.nativeDependencyCount || file.useRaylib)
     {
-        fprintf(makefile, "\tif [ -d lib/$(%s_NAME) ]; then cp -r lib/$(%s_NAME) $(DISTDIR)/lib/$(%s_NAME); fi\n", file.nativeDependencies[i], file.nativeDependencies[i], file.nativeDependencies[i]);
+        fprintf(makefile, " deps\n\n");
+        fprintf(makefile, "ifneq ($(DISTDIR), .)\n");
+        fprintf(makefile, "deps:\n");
+        fprintf(makefile, "\tmkdir -p $(DISTDIR)/lib\n");
+        for (int i = 0; i < file.nativeDependencyCount; i++)
+        {
+            fprintf(makefile, "\tif [ -d lib/$(%s_NAME) ]; then cp -r lib/$(%s_NAME) $(DISTDIR)/lib/$(%s_NAME); fi\n", file.nativeDependencies[i], file.nativeDependencies[i], file.nativeDependencies[i]);
+        }
+        if (file.useRaylib)
+        {
+            fprintf(makefile, "\tif [ -d lib/$(RAYLIB_NAME) ]; then cp -r lib/$(RAYLIB_NAME) $(DISTDIR)/lib/$(RAYLIB_NAME); fi\n");
+        }
+        fprintf(makefile, "else\n");
+        fprintf(makefile, "deps:\n");
+        fprintf(makefile, "endif\n");
     }
+
+    fprintf(makefile, "\n$(DISTDIR):\n");
+    fprintf(makefile, "\tmkdir -p $@\n");
 
     fprintf(makefile, "\nCFLAGS+=-Isrc\n");
     fprintf(makefile, "CFLAGS+=-Iinclude\n");
@@ -357,7 +374,7 @@ void genmakefile()
 
 int main(int argc, char **argv)
 {
-    printf("He v1.3\n");
+    printf("He " VERSION_STRING "\n");
     parseheplatforms();
     parsehefile();
     genmakefile();

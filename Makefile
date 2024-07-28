@@ -1,3 +1,5 @@
+# Generated using Helium v1.3.1 (https://github.com/tornadocookie/he)
+
 PLATFORM?=linux64
 DISTDIR?=.
 
@@ -46,12 +48,9 @@ endif
 PROGRAMS=he
 LIBRARIES=
 
-all: $(DISTDIR) deps $(foreach prog, $(PROGRAMS), $(DISTDIR)/$(prog)$(EXEC_EXTENSION)) $(foreach lib, $(LIBRARIES), $(DISTDIR)/$(lib)$(LIB_EXTENSION))
-
+all: $(DISTDIR) $(foreach prog, $(PROGRAMS), $(DISTDIR)/$(prog)$(EXEC_EXTENSION)) $(foreach lib, $(LIBRARIES), $(DISTDIR)/$(lib)$(LIB_EXTENSION))
 $(DISTDIR):
 	mkdir -p $@
-
-deps:
 
 CFLAGS+=-Isrc
 CFLAGS+=-Iinclude
@@ -68,10 +67,6 @@ clean:
 
 all_dist:
 	DISTDIR=$(DISTDIR)/dist/linux64 PLATFORM=linux64 $(MAKE)
-
 	DISTDIR=$(DISTDIR)/dist/linux64-debug PLATFORM=linux64-debug $(MAKE)
-
 	DISTDIR=$(DISTDIR)/dist/win64 PLATFORM=win64 $(MAKE)
-
 	DISTDIR=$(DISTDIR)/dist/win32 PLATFORM=win32 $(MAKE)
-
