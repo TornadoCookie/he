@@ -280,11 +280,25 @@ void genmakefile()
         if (file.programs[i].type == PROGRAM_LIBRARY) fprintf(makefile, "%s%s", file.programs[i].name, i != file.programCount - 1 ? " " : "");
     }
 
-    fprintf(makefile, "\n\nall: $(DISTDIR) $(foreach prog, $(PROGRAMS), $(DISTDIR)/$(prog)$(EXEC_EXTENSION)) $(foreach lib, $(LIBRARIES), $(DISTDIR)/$(lib)$(LIB_EXTENSION))");
+    for (int i = 0; i < file.nativeDependencyCount; i++)
+    {
+        fprintf(makefile, "\n\n%s_NAME=lib%s-$(PLATFORM)\n", file.nativeDependencies[i], file.nativeDependencies[i]);
+        fprintf(makefile, "CFLAGS+=-Ilib/$(%s_NAME)/include\nCFLAGS+=-Wl,-rpath,lib/$(%s_NAME)/lib\n", file.nativeDependencies[i], file.nativeDependencies[i]);
+        fprintf(makefile, "LDFLAGS+=-Llib/$(%s_NAME)/lib\nLDFLAGS+=-l%s", file.nativeDependencies[i], file.nativeDependencies[i]);
+    }
+
+    fprintf(makefile, "\n\nall: $(DISTDIR) deps $(foreach prog, $(PROGRAMS), $(DISTDIR)/$(prog)$(EXEC_EXTENSION)) $(foreach lib, $(LIBRARIES), $(DISTDIR)/$(lib)$(LIB_EXTENSION))");
     fprintf(makefile, "\n\n$(DISTDIR):\n");
     fprintf(makefile, "\tmkdir -p $@\n\n");
 
-    fprintf(makefile, "CFLAGS+=-Isrc\n");
+    fprintf(makefile, "deps:\n");
+    fprintf(makefile, "\tmkdir -p $(DISTDIR)/lib\n");
+    for (int i = 0; i < file.nativeDependencyCount; i++)
+    {
+        fprintf(makefile, "\tif [ -d lib/$(%s_NAME) ]; then cp -r lib/$(%s_NAME) $(DISTDIR)/lib/$(%s_NAME); fi\n", file.nativeDependencies[i], file.nativeDependencies[i], file.nativeDependencies[i]);
+    }
+
+    fprintf(makefile, "\nCFLAGS+=-Isrc\n");
     fprintf(makefile, "CFLAGS+=-Iinclude\n");
     for (int i = 0; i < file.dependencyCount; i++)
     {
@@ -302,13 +316,6 @@ void genmakefile()
     {
         fprintf(makefile, "CFLAGS+=-Ilib/$(RAYLIB_NAME)/include\nCFLAGS+=-Wl,-rpath,lib/$(RAYLIB_NAME)/lib\n\n");
         fprintf(makefile, "LDFLAGS+=-lm\nLDFLAGS+=-Llib/$(RAYLIB_NAME)/lib\nLDFLAGS+=$(RAYLIB_DLL)\n\n");
-    }
-
-    for (int i = 0; i < file.nativeDependencyCount; i++)
-    {
-        fprintf(makefile, "%s_NAME=lib%s-$(PLATFORM)\n", file.nativeDependencies[i], file.nativeDependencies[i]);
-        fprintf(makefile, "CFLAGS+=-Ilib/$(%s_NAME)/include\nCFLAGS+=-Wl,-rpath,lib/$(%s_NAME)/lib\n", file.nativeDependencies[i], file.nativeDependencies[i]);
-        fprintf(makefile, "LDFLAGS+=-Llib/$(%s_NAME)/lib\nLDFLAGS+=-l%s\n\n", file.nativeDependencies[i], file.nativeDependencies[i]);
     }
 
     for (int i = 0; i < file.programCount; i++)
@@ -339,12 +346,18 @@ void genmakefile()
         fprintf(makefile, "\trm -f $(DISTDIR)/%s$(EXEC_EXTENSION)\n", file.programs[i].name);
     }
 
+    fprintf(makefile, "\nall_dist:\n");
+    for (int i = 0; i < platformCount; i++)
+    {
+        fprintf(makefile, "\tDISTDIR=$(DISTDIR)/dist/%s PLATFORM=%s $(MAKE)\n", platforms[i].name, platforms[i].name);
+    }
+
     fclose(makefile);
 }
 
 int main(int argc, char **argv)
 {
-    printf("He v1.2\n");
+    printf("He v1.3\n");
     parseheplatforms();
     parsehefile();
     genmakefile();

@@ -1,0 +1,20 @@
+changelog
+---------
+
+Current Release: he v1.3 (Jul 27 2024)
+
+Release: he v1.3 (Jul 27 2024)
+- Added distribution.
+- Added documentation.
+- Added changelog.
+
+Release: he v1.2 (Jul 21 2024)
+- Added native dependencies (NativeDependency)
+
+Release: he v1.1 (Jun 18 2024)
+- Added source groups. (SourceGroup and UseSourceGroup)
+- Added version indicator.
+
+Release: he v1.0 (May 18 2024)
+Initial version.
+HeFile and HePlatforms works and generates makefiles.
