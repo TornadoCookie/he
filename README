@@ -17,6 +17,7 @@ UseRaylib [bool]: whether or not the project is using raylib.
 Dependency [str]: Add a single-header header-only dependency. The makefile will look in lib/[dependency]/src and lib/[dependency]/include for the header.
 NativeDependency [str]: Add a native dependency. The makefile will look in lib/[dependency]-[platform]/lib for the libraries and lib/[dependency]-[platform]/include for the headers.
 ExtraCFlag [str]: Add an extra flag to GCC.
+DistData [str]: Add a file to be included with distributions.
 
 Program [str]: define a new program.
 Library [str]: define a new library.

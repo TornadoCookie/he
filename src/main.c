@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define VERSION_STRING "v1.3.1"
+#define VERSION_STRING "v1.3.2"
 
 #define TextStartsWith(text, startsWith) !strncmp(text, startsWith, strlen(startsWith))
 
@@ -66,6 +66,8 @@ typedef struct HeFile {
     int extraCflagCount;
     char **nativeDependencies;
     int nativeDependencyCount;
+    char **distData;
+    int distDataCount;
 } HeFile;
 
 HeFile file = {
@@ -224,6 +226,13 @@ void parsehefile()
         }
         DoSettingString("ExtraCFlag", file.extraCflags[file.extraCflagCount - 1]);
 
+        if (TextStartsWith(buf, "DistData"))
+        {
+            file.distDataCount++;
+            file.distData = realloc(file.distData, file.distDataCount * sizeof(char *));
+        }
+        DoSettingString("DistData", file.distData[file.distDataCount - 1]);
+
         fgets(buf, 512, hefile);
     }
 
@@ -293,7 +302,7 @@ void genmakefile()
 
     fprintf(makefile, "\n\nall: $(DISTDIR) $(foreach prog, $(PROGRAMS), $(DISTDIR)/$(prog)$(EXEC_EXTENSION)) $(foreach lib, $(LIBRARIES), $(DISTDIR)/$(lib)$(LIB_EXTENSION))");
 
-    if (file.nativeDependencyCount || file.useRaylib)
+    if (file.nativeDependencyCount || file.useRaylib || file.distDataCount)
     {
         fprintf(makefile, " deps\n\n");
         fprintf(makefile, "ifneq ($(DISTDIR), .)\n");
@@ -306,6 +315,10 @@ void genmakefile()
         if (file.useRaylib)
         {
             fprintf(makefile, "\tif [ -d lib/$(RAYLIB_NAME) ]; then cp -r lib/$(RAYLIB_NAME) $(DISTDIR)/lib/$(RAYLIB_NAME); fi\n");
+        }
+        for (int i = 0; i < file.distDataCount; i++)
+        {
+            fprintf(makefile, "\tcp -r %s $(DISTDIR)\n", file.distData[i]);
         }
         fprintf(makefile, "else\n");
         fprintf(makefile, "deps:\n");

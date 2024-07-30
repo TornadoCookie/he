@@ -1,7 +1,10 @@
 changelog
 ---------
 
-Current Release: he v1.3.1 (Jul 28 2024)
+Current Release: he v1.3.2 (Jul 30 2024)
+
+Release: he v1.3.2 (Jul 30 2024)
+- Added DistData directive.
 
 Release: he v1.3.1 (Jul 28 2024)
 - Bug fixes.
