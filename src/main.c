@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define VERSION_STRING "v1.3.2"
+#define VERSION_STRING "v1.3.3"
 
 #define TextStartsWith(text, startsWith) !strncmp(text, startsWith, strlen(startsWith))
 
@@ -310,11 +310,11 @@ void genmakefile()
         fprintf(makefile, "\tmkdir -p $(DISTDIR)/lib\n");
         for (int i = 0; i < file.nativeDependencyCount; i++)
         {
-            fprintf(makefile, "\tif [ -d lib/$(%s_NAME) ]; then cp -r lib/$(%s_NAME) $(DISTDIR)/lib/$(%s_NAME); fi\n", file.nativeDependencies[i], file.nativeDependencies[i], file.nativeDependencies[i]);
+            fprintf(makefile, "\tif [ -d lib/$(%s_NAME) ]; then cp -r lib/$(%s_NAME) $(DISTDIR)/lib; fi\n", file.nativeDependencies[i], file.nativeDependencies[i]);
         }
         if (file.useRaylib)
         {
-            fprintf(makefile, "\tif [ -d lib/$(RAYLIB_NAME) ]; then cp -r lib/$(RAYLIB_NAME) $(DISTDIR)/lib/$(RAYLIB_NAME); fi\n");
+            fprintf(makefile, "\tif [ -d lib/$(RAYLIB_NAME) ]; then cp -r lib/$(RAYLIB_NAME) $(DISTDIR)/lib; fi\n");
         }
         for (int i = 0; i < file.distDataCount; i++)
         {
