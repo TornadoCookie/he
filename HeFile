@@ -1,4 +1,5 @@
 DefaultPlatform linux64
+DefaultDistDir build
 UseRaylib False
 
 ExtraCFlag -Wno-unused-result

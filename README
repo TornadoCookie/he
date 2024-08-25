@@ -26,6 +26,7 @@ SourceGroup [str]: define a new source group.
 Under a program or library directive:
 UseSourceGroup [str]: Add the source files in the source group to the program.
 Source [str]: Add a source file to the program.
+CxxSource [str]: Add a C++ source file to the program as opposed to C.
 
 HePlatforms directives:
 Platform [str]: define a new platform.
@@ -34,6 +35,7 @@ Under a platform directive:
 ExecExtension [str]: The file extension of an executable targeting this platform.
 LibExtension [str]: The file extension of a library targeting this platform.
 Compiler [str]: The compiler to use. (Default value of the CC environment variable)
+CxxCompiler [str]: The C++ compiler to use. (Default value of the CXX environment variable)
 RaylibLdFlag [str]: The flag to be added to LDFLAGS when using raylib (on windows it is -lraylibdll while on linux it is just -lraylib.)
 IsRelease [bool]: Whether or not the platform is meant for production. (Add optimization flags)
 IsDebug [bool]: Whether or not the platform is meant for debugging. (Add debugging flags)

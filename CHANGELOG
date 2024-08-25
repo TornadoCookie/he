@@ -1,7 +1,14 @@
 changelog
 ---------
 
-Current Release: he v1.3.2 (Jul 30 2024)
+Current Release: he v2.0.0 (Aug 24 2024)
+
+Release: he v2.0.0 (Aug 24 2024)
+- [BREAKING] The makefile now compiles object files before linking them, so compilation runs miles faster. (much needed for c++)
+    This breaks using ExtraCFlags to add flags that should be LDFLAGS
+- Fixed bug where dependencies were copied wrongly into distribution directories.
+- Added C++ Support (CxxSource, CxxCompiler).
+- Because of the above change, you can now have extra LDFLAGS (ExtraLDFlag), as those are now different
 
 Release: he v1.3.2 (Jul 30 2024)
 - Added DistData directive.

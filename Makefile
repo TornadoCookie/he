@@ -1,7 +1,7 @@
-# Generated using Helium v1.3.2 (https://github.com/tornadocookie/he)
+# Generated using Helium v2.0.0 (https://github.com/tornadocookie/he)
 
 PLATFORM?=linux64
-DISTDIR?=.
+DISTDIR?=build
 
 .PHONY: all
 
@@ -48,7 +48,10 @@ endif
 PROGRAMS=he
 LIBRARIES=
 
-all: $(DISTDIR) $(foreach prog, $(PROGRAMS), $(DISTDIR)/$(prog)$(EXEC_EXTENSION)) $(foreach lib, $(LIBRARIES), $(DISTDIR)/$(lib)$(LIB_EXTENSION))
+all: $(DISTDIR) $(DISTDIR)/src $(foreach prog, $(PROGRAMS), $(DISTDIR)/$(prog)$(EXEC_EXTENSION)) $(foreach lib, $(LIBRARIES), $(DISTDIR)/$(lib)$(LIB_EXTENSION))
+$(DISTDIR)/src:
+	mkdir -p $@
+
 $(DISTDIR):
 	mkdir -p $@
 
@@ -57,12 +60,16 @@ CFLAGS+=-Iinclude
 CFLAGS+=-D PLATFORM=\"$(PLATFORM)\"
 CFLAGS+=-Wno-unused-result
 
-he_SOURCES+=src/main.c
+he_SOURCES+=$(DISTDIR)/src/main.o
 
 $(DISTDIR)/he$(EXEC_EXTENSION): $(he_SOURCES)
-	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+$(DISTDIR)/%.o: %.c
+	$(CC) -c $^ $(CFLAGS) -o $@
 
 clean:
+	rm -f $(DISTDIR)/src/main.o
 	rm -f $(DISTDIR)/he$(EXEC_EXTENSION)
 
 all_dist:
