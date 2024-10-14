@@ -1,7 +1,11 @@
 changelog
 ---------
 
-Current Release: he v2.0.0 (Aug 24 2024)
+Current Release: he v2.0.1 (Oct 14 2024)
+
+Release: he v2.0.1 (Oct 14 2024)
+- Fixed bug in makefile generation involving native dependencies
+- Added building for web as a default platform
 
 Release: he v2.0.0 (Aug 24 2024)
 - [BREAKING] The makefile now compiles object files before linking them, so compilation runs miles faster. (much needed for c++)

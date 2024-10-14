@@ -1,4 +1,4 @@
-# Generated using Helium v2.0.0 (https://github.com/tornadocookie/he)
+# Generated using Helium v2.0.1 (https://github.com/tornadocookie/he)
 
 PLATFORM?=linux64
 DISTDIR?=build
@@ -59,6 +59,7 @@ CFLAGS+=-Isrc
 CFLAGS+=-Iinclude
 CFLAGS+=-D PLATFORM=\"$(PLATFORM)\"
 CFLAGS+=-Wno-unused-result
+
 
 he_SOURCES+=$(DISTDIR)/src/main.o
 

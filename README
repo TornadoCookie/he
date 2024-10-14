@@ -1,10 +1,27 @@
 He(lium): A build system tailored for very specific programs made in raylib
 
+Default platforms:
+linux64: linux 64-bit with optimization
+linux64-debug: linux 64-bit with debug symbols
+win64: windows 64-bit with optimization
+web: emscripten build (release)
+
+note: he actually uses a custom HePlatforms for example purposes
+
+it also adds some defines based on the platform
+PLATFORM: the platform name
+RELEASE: defined if release mode
+DEBUG: defined if debug mode
+EXEC_EXTENSION: extension of executable files
+LIB_EXTENSION: extension of library files
+
 Source structure:
 
 <Root>
 |->src - source files
 |->lib - libraries
+|->include - headers
+|->build - home for built executables and object files-
 |->HeFile - "make"file
 |->HePlatforms - special options for each platform
 

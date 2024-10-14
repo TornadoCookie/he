@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define VERSION_STRING "v2.0.0"
+#define VERSION_STRING "v2.0.1"
 
 #define TextStartsWith(text, startsWith) !strncmp(text, startsWith, strlen(startsWith))
 
@@ -100,11 +100,12 @@ int platformCount;
 
 void loaddefaultplatforms()
 {
-    platformCount = 3;
+    platformCount = 4;
     platforms = malloc(sizeof(HePlatform) * platformCount);
     platforms[0] = (HePlatform){false, true, "linux64", "", ".so", "gcc", "g++", "-lraylib"};
     platforms[1] = (HePlatform){true, false, "linux64-debug", "-debug", "-debug.so", "gcc", "g++", "-lraylib"};
     platforms[2] = (HePlatform){false, true, "win64", ".exe", ".dll", "x86_64-w64-mingw32-gcc", "x86_64-w64-mingw32-g++", "-lraylibdll"};
+    platforms[3] = (HePlatform){false, true, "web", ".html", ".a", "emcc", "em++", "-lraylib"};
 }
 
 void parseheplatforms()
@@ -356,7 +357,7 @@ void genmakefile()
     {
         fprintf(makefile, "\n\n%s_NAME=lib%s-$(PLATFORM)\n", file.nativeDependencies[i], file.nativeDependencies[i]);
         fprintf(makefile, "CFLAGS+=-Ilib/$(%s_NAME)/include\n", file.nativeDependencies[i]);
-        fprintf(makefile, "LDFLAGS+=-Llib/$(%s_NAME)/lib\nLDFLAGS+=-l%sLDFLAGS+=-Wl,-rpath,lib/$(%s_NAME)/lib\n", file.nativeDependencies[i], file.nativeDependencies[i], file.nativeDependencies[i]);
+        fprintf(makefile, "LDFLAGS+=-Llib/$(%s_NAME)/lib\nLDFLAGS+=-l%s\nLDFLAGS+=-Wl,-rpath,lib/$(%s_NAME)/lib\n", file.nativeDependencies[i], file.nativeDependencies[i], file.nativeDependencies[i]);
     }
 
     fprintf(makefile, "\n\nall: $(DISTDIR)");
