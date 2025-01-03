@@ -1,7 +1,14 @@
 changelog
 ---------
 
-Current Release: he v2.0.1 (Oct 14 2024)
+Current Release: he v2.1.0 (Jan 3 2025)
+
+Release: he v2.1.0 (Jan 3 2025)
+- Fixed bug where having a source group with mixed C and C++ would not compile the C sources
+- Updated default raylib version to 5.5
+- Added static libraries
+- Program doesn't copy the native dependencies if it has already been copied
+- Added some helper scripts
 
 Release: he v2.0.1 (Oct 14 2024)
 - Fixed bug in makefile generation involving native dependencies

@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define VERSION_STRING "v2.0.1"
+#define VERSION_STRING "v2.1.0"
 
 #define TextStartsWith(text, startsWith) !strncmp(text, startsWith, strlen(startsWith))
 
@@ -53,7 +53,14 @@ typedef struct HeProgram {
     char **sourceGroups;
     int sourceGroupCount;
     bool has_cxx;
+    bool is_static;
+    bool has_no_c;
 } HeProgram;
+
+typedef struct HeNativeDependency {
+    char *name;
+    bool is_static;
+} HeNativeDependency;
 
 typedef struct HeFile {
     char *defaultPlatform;
@@ -68,7 +75,7 @@ typedef struct HeFile {
     int extraCflagCount;
     char **extraLDflags;
     int extraLDflagCount;
-    char **nativeDependencies;
+    HeNativeDependency *nativeDependencies;
     int nativeDependencyCount;
     char **distData;
     int distDataCount;
@@ -78,7 +85,7 @@ typedef struct HeFile {
 
 HeFile file = {
     .defaultPlatform = "linux64-debug",
-    .raylibVersion = "5",
+    .raylibVersion = "5.5",
     .defaultDistDir = ".",
 };
 
@@ -88,8 +95,10 @@ typedef struct HePlatform {
     char *name;
     char *execExtension;
     char *libExtension;
+    char *libExtensionStatic;
     char *compiler;
     char *cxxCompiler;
+    char *archiver;
     char *raylibLdFlag;
     char **extraCflags;
     int extraCflagCount;
@@ -102,10 +111,10 @@ void loaddefaultplatforms()
 {
     platformCount = 4;
     platforms = malloc(sizeof(HePlatform) * platformCount);
-    platforms[0] = (HePlatform){false, true, "linux64", "", ".so", "gcc", "g++", "-lraylib"};
-    platforms[1] = (HePlatform){true, false, "linux64-debug", "-debug", "-debug.so", "gcc", "g++", "-lraylib"};
-    platforms[2] = (HePlatform){false, true, "win64", ".exe", ".dll", "x86_64-w64-mingw32-gcc", "x86_64-w64-mingw32-g++", "-lraylibdll"};
-    platforms[3] = (HePlatform){false, true, "web", ".html", ".a", "emcc", "em++", "-lraylib"};
+    platforms[0] = (HePlatform){false, true, "linux64", "", ".so", ".a", "gcc", "g++", "ar", "-lraylib"};
+    platforms[1] = (HePlatform){true, false, "linux64-debug", "-debug", ".so", ".a", "gcc", "g++", "ar", "-lraylib"};
+    platforms[2] = (HePlatform){false, true, "win64", ".exe", ".dll", ".a", "x86_64-w64-mingw32-gcc", "x86_64-w64-mingw32-g++", "x86_64-w64-mingw32-ar", "-lraylibdll"};
+    platforms[3] = (HePlatform){false, true, "web", ".html", ".a", ".a", "emcc", "em++", "emar", "-lraylib"};
 }
 
 void parseheplatforms()
@@ -176,6 +185,7 @@ void parsehefile()
             file.programs[currentProgram].type = PROGRAM_EXECUTABLE;
             if (TextStartsWith(buf, "Library")) file.programs[currentProgram].type = PROGRAM_LIBRARY;
             else if (TextStartsWith(buf, "SourceGroup")) file.programs[currentProgram].type = PROGRAM_SOURCEGROUP;
+            file.programs[currentProgram].has_no_c = true;
         }
         DoSettingString("Program", file.programs[currentProgram].name);
         DoSettingString("Library", file.programs[currentProgram].name);
@@ -197,6 +207,10 @@ void parsehefile()
             {
                 file.programs[currentProgram].sources[file.programs[currentProgram].sourceCount - 1].is_cxx = true;
                 file.programs[currentProgram].has_cxx = true;
+            }
+            else
+            {
+                file.programs[currentProgram].has_no_c = false;
             }
         }
         if (currentProgram != -1 && file.programs[currentProgram].sourceCount)
@@ -237,10 +251,20 @@ void parsehefile()
         if (TextStartsWith(buf, "NativeDependency"))
         {
             file.nativeDependencyCount++;
-            file.nativeDependencies = realloc(file.nativeDependencies, file.nativeDependencyCount * sizeof(char *));
+            file.nativeDependencies = realloc(file.nativeDependencies, file.nativeDependencyCount * sizeof(HeNativeDependency));
+            if (TextStartsWith(buf, "NativeDependencyStatic"))
+            {
+                file.nativeDependencies[file.nativeDependencyCount-1].is_static = true;
+            }
+            else
+            {
+                file.nativeDependencies[file.nativeDependencyCount-1].is_static = false;
+            }
         }
-        DoSettingString("NativeDependency", file.nativeDependencies[file.nativeDependencyCount - 1]);
-
+        
+        DoSettingString("NativeDependency", file.nativeDependencies[file.nativeDependencyCount - 1].name);
+        DoSettingString("NativeDependencyStatic", file.nativeDependencies[file.nativeDependencyCount - 1].name);
+        
         if (TextStartsWith(buf, "ExtraCFlag"))
         {
             file.extraCflagCount++;
@@ -314,6 +338,7 @@ void genmakefile()
         fprintf(makefile, "ifeq ($(PLATFORM), %s)\n", platforms[i].name);
         fprintf(makefile, "EXEC_EXTENSION=%s\n", platforms[i].execExtension);
         fprintf(makefile, "LIB_EXTENSION=%s\n", platforms[i].libExtension);
+        fprintf(makefile, "LIB_EXTENSION_STATIC=%s\n", platforms[i].libExtensionStatic);
         fprintf(makefile, "CC=%s\n", platforms[i].compiler);
         if (platforms[i].cxxCompiler) fprintf(makefile, "CXX=%s\n", platforms[i].cxxCompiler);
         if (file.useRaylib)
@@ -355,9 +380,18 @@ void genmakefile()
 
     for (int i = 0; i < file.nativeDependencyCount; i++)
     {
-        fprintf(makefile, "\n\n%s_NAME=lib%s-$(PLATFORM)\n", file.nativeDependencies[i], file.nativeDependencies[i]);
-        fprintf(makefile, "CFLAGS+=-Ilib/$(%s_NAME)/include\n", file.nativeDependencies[i]);
-        fprintf(makefile, "LDFLAGS+=-Llib/$(%s_NAME)/lib\nLDFLAGS+=-l%s\nLDFLAGS+=-Wl,-rpath,lib/$(%s_NAME)/lib\n", file.nativeDependencies[i], file.nativeDependencies[i], file.nativeDependencies[i]);
+        fprintf(makefile, "\n\n%s_NAME=lib%s-$(PLATFORM)\n", file.nativeDependencies[i].name, file.nativeDependencies[i].name);
+        fprintf(makefile, "CFLAGS+=-Ilib/$(%s_NAME)/include\n", file.nativeDependencies[i].name);
+        fprintf(makefile, "LDFLAGS+=-Llib/$(%s_NAME)/lib\n", file.nativeDependencies[i].name);
+        if (!file.nativeDependencies[i].is_static)
+        {
+            fprintf(makefile, "LDFLAGS+=-l%s\n", file.nativeDependencies[i].name);
+            fprintf(makefile, "LDFLAGS+=-Wl,-rpath,lib/$(%s_NAME)/lib\n", file.nativeDependencies[i].name);
+        }
+        else
+        {
+            fprintf(makefile, "LDFLAGS+=-l:lib%s.a\n", file.nativeDependencies[i].name);
+        }
     }
 
     fprintf(makefile, "\n\nall: $(DISTDIR)");
@@ -367,7 +401,7 @@ void genmakefile()
         fprintf(makefile, " $(DISTDIR)/%s", file.objDirs[i]);
     }
 
-    fprintf(makefile, " $(foreach prog, $(PROGRAMS), $(DISTDIR)/$(prog)$(EXEC_EXTENSION)) $(foreach lib, $(LIBRARIES), $(DISTDIR)/$(lib)$(LIB_EXTENSION))");
+    fprintf(makefile, " $(foreach prog, $(PROGRAMS), $(DISTDIR)/$(prog)$(EXEC_EXTENSION)) $(foreach lib, $(LIBRARIES), $(DISTDIR)/$(lib)$(LIB_EXTENSION) $(DISTDIR)/$(lib)$(LIB_EXTENSION_STATIC))");
 
     if (file.nativeDependencyCount || file.useRaylib || file.distDataCount)
     {
@@ -377,11 +411,14 @@ void genmakefile()
         fprintf(makefile, "\tmkdir -p $(DISTDIR)/lib\n");
         for (int i = 0; i < file.nativeDependencyCount; i++)
         {
-            fprintf(makefile, "\tif [ -d lib/$(%s_NAME) ]; then cp -r lib/$(%s_NAME) $(DISTDIR)/lib; fi\n", file.nativeDependencies[i], file.nativeDependencies[i]);
+            if (!file.nativeDependencies[i].is_static)
+            {
+                fprintf(makefile, "\tif [ -d lib/$(%s_NAME) ] && [ ! -d $(DISTDIR)/lib/$(%s_NAME) ]; then cp -r lib/$(%s_NAME) $(DISTDIR)/lib; fi\n", file.nativeDependencies[i].name, file.nativeDependencies[i].name, file.nativeDependencies[i].name);
+            }
         }
         if (file.useRaylib)
         {
-            fprintf(makefile, "\tif [ -d lib/$(RAYLIB_NAME) ]; then cp -r lib/$(RAYLIB_NAME) $(DISTDIR)/lib; fi\n");
+            fprintf(makefile, "\tif [ -d lib/$(RAYLIB_NAME) ] && [ ! -d $(DISTDIR)/lib/$(RAYLIB_NAME) ]; then cp -r lib/$(RAYLIB_NAME) $(DISTDIR)/lib; fi\n");
         }
         for (int i = 0; i < file.distDataCount; i++)
         {
@@ -446,7 +483,14 @@ void genmakefile()
         }
         for (int j = 0; j < file.programs[i].sourceGroupCount; j++)
         {
-            fprintf(makefile, "%s_%sSOURCES+=$(%s_%sSOURCES)\n", file.programs[i].name, file.programs[i].has_cxx?"CXX_":"", file.programs[i].sourceGroups[j], file.programs[i].has_cxx?"CXX_":"");
+            if (file.programs[i].has_cxx)
+            {
+                fprintf(makefile, "%s_CXX_SOURCES+=$(%s_CXX_SOURCES)\n", file.programs[i].name, file.programs[i].sourceGroups[j]);
+            }
+            if (!file.programs[i].has_no_c)
+            {
+                fprintf(makefile, "%s_SOURCES+=$(%s_SOURCES)\n", file.programs[i].name, file.programs[i].sourceGroups[j]);
+            }
         }
         if (file.programs[i].type != PROGRAM_SOURCEGROUP)
         {
@@ -454,6 +498,15 @@ void genmakefile()
             if (file.programs[i].has_cxx) fprintf(makefile, " $(%s_CXX_SOURCES)\n", file.programs[i].name);
             else fprintf(makefile, "\n");
             fprintf(makefile, "\t$(CC) -o $@ $^%s $(LDFLAGS)\n\n", file.programs[i].type == PROGRAM_LIBRARY ? " -fPIC -shared" : "");
+
+            if (file.programs[i].type == PROGRAM_LIBRARY)
+            {
+                fprintf(makefile, "\n$(DISTDIR)/%s$(LIB_EXTENSION_STATIC): $(%s_SOURCES)", file.programs[i].name, file.programs[i].name);
+                if (file.programs[i].has_cxx) fprintf(makefile, " $(%s_CXX_SOURCES)\n", file.programs[i].name);
+                else fprintf(makefile, "\n");
+                fprintf(makefile, "\t$(AR) rcs $@ $^\n\n");
+
+            }
         }
         else
         {
