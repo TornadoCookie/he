@@ -3,6 +3,13 @@ changelog
 
 Current Release: he v2.1.0 (Jan 3 2025)
 
+Release: he v2.2.0 (Nov 9 2025)
+- Added warnings for unrecognized directives
+- Added ExtraCxxFlags directive, for flags only for c++ code.
+- Makefile optimizations
+- Added missing StaticLibExtension platform directive
+- Added missing ExtraLDFlag directive for HePlatforms
+
 Release: he v2.1.0 (Jan 3 2025)
 - Fixed bug where having a source group with mixed C and C++ would not compile the C sources
 - Updated default raylib version to 5.5

@@ -1,4 +1,4 @@
-# Generated using Helium v2.0.1 (https://github.com/tornadocookie/he)
+# Generated using Helium v2.2.0 (https://github.com/tornadocookie/he)
 
 PLATFORM?=linux64
 DISTDIR?=build
@@ -8,6 +8,7 @@ DISTDIR?=build
 ifeq ($(PLATFORM), linux64)
 EXEC_EXTENSION=
 LIB_EXTENSION=.so
+LIB_EXTENSION_STATIC=.a
 CC=gcc
 CFLAGS+=-O2
 CFLAGS+=-D RELEASE
@@ -18,6 +19,7 @@ endif
 ifeq ($(PLATFORM), linux64-debug)
 EXEC_EXTENSION=-debug
 LIB_EXTENSION=-debug.so
+LIB_EXTENSION_STATIC=.a
 CC=gcc
 CFLAGS+=-g
 CFLAGS+=-D DEBUG
@@ -28,6 +30,7 @@ endif
 ifeq ($(PLATFORM), win64)
 EXEC_EXTENSION=.exe
 LIB_EXTENSION=.dll
+LIB_EXTENSION_STATIC=.lib
 CC=x86_64-w64-mingw32-gcc
 CFLAGS+=-O2
 CFLAGS+=-D RELEASE
@@ -38,6 +41,7 @@ endif
 ifeq ($(PLATFORM), win32)
 EXEC_EXTENSION=.exe
 LIB_EXTENSION=.dll
+LIB_EXTENSION_STATIC=.lib
 CC=i686-w64-mingw32-gcc
 CFLAGS+=-O2
 CFLAGS+=-D RELEASE
@@ -48,7 +52,7 @@ endif
 PROGRAMS=he
 LIBRARIES=
 
-all: $(DISTDIR) $(DISTDIR)/src $(foreach prog, $(PROGRAMS), $(DISTDIR)/$(prog)$(EXEC_EXTENSION)) $(foreach lib, $(LIBRARIES), $(DISTDIR)/$(lib)$(LIB_EXTENSION))
+all: $(DISTDIR) $(DISTDIR)/src $(foreach prog, $(PROGRAMS), $(DISTDIR)/$(prog)$(EXEC_EXTENSION)) $(foreach lib, $(LIBRARIES), $(DISTDIR)/$(lib)$(LIB_EXTENSION) $(DISTDIR)/$(lib)$(LIB_EXTENSION_STATIC))
 $(DISTDIR)/src:
 	mkdir -p $@
 
@@ -70,8 +74,8 @@ $(DISTDIR)/%.o: %.c
 	$(CC) -c $^ $(CFLAGS) -o $@
 
 clean:
-	rm -f $(DISTDIR)/src/main.o
-	rm -f $(DISTDIR)/he$(EXEC_EXTENSION)
+	rm -f $(DISTDIR)/src/*.o
+	rm -f $(DISTDIR/*$(EXEC_EXTENSION)
 
 all_dist:
 	DISTDIR=$(DISTDIR)/dist/linux64 PLATFORM=linux64 $(MAKE)

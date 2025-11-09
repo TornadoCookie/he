@@ -3,7 +3,28 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define VERSION_STRING "v2.1.0"
+#define VERSION_STRING "v2.2.0"
+
+char *GetDirective(char *buf)
+{
+    char *end = strchr(buf, ' ');
+    if (!end) end = strchr(buf, '\n');
+    char *ret = malloc(end - buf);
+    memcpy(ret, buf, end - buf);
+    ret[end - buf] = 0;
+    return ret;
+}
+
+static bool _recognized;
+#define BeginParsing() _recognized = false
+#define EndParsing(file, line, buf) \
+    if (!_recognized && strlen(buf) != 1) \
+	{ \
+        char *directive = GetDirective(buf); \
+        printf("%s:%d: warning: no such directive `%s'\n", file, line, directive); \
+        free(directive); \
+    }
+
 
 #define TextStartsWith(text, startsWith) !strncmp(text, startsWith, strlen(startsWith))
 
@@ -16,6 +37,7 @@ bool _DoSettingString(char *buf, char *settingName, char *fmt, char **settingPro
     sscanf(buf, fmt, *settingProperty);
     *settingProperty = realloc(*settingProperty, strlen(*settingProperty) + 1);
 
+    _recognized = true;
     return true;
 }
 
@@ -81,6 +103,8 @@ typedef struct HeFile {
     int distDataCount;
     char **objDirs;
     int objDirCount;
+    char **extraCxxflags;
+    int extraCxxflagCount;
 } HeFile;
 
 HeFile file = {
@@ -102,6 +126,10 @@ typedef struct HePlatform {
     char *raylibLdFlag;
     char **extraCflags;
     int extraCflagCount;
+    char **extraCxxflags;
+    int extraCxxflagCount;
+    char **extraLDflags;
+    int extraLDflagCount;
 } HePlatform;
 
 HePlatform *platforms;
@@ -122,6 +150,7 @@ void parseheplatforms()
     FILE *heplatforms = fopen("HePlatforms", "r");
     char buf[512];
     int currentPlatform = 0;
+    int line = 1;
 
     if (!heplatforms)
     {
@@ -133,6 +162,8 @@ void parseheplatforms()
     fgets(buf, 512, heplatforms);
     while (!feof(heplatforms))
     {
+        BeginParsing();
+
         if (TextStartsWith(buf, "Platform"))
         {
             currentPlatform = platformCount;
@@ -143,6 +174,7 @@ void parseheplatforms()
         DoSettingString("Platform", platforms[currentPlatform].name);
         DoSettingString("ExecExtension", platforms[currentPlatform].execExtension);
         DoSettingString("LibExtension", platforms[currentPlatform].libExtension);
+        DoSettingString("StaticLibExtension", platforms[currentPlatform].libExtensionStatic);
         DoSettingString("Compiler", platforms[currentPlatform].compiler);
         DoSettingString("CxxCompiler", platforms[currentPlatform].cxxCompiler);
         DoSettingString("RaylibLdFlag", platforms[currentPlatform].raylibLdFlag);
@@ -154,7 +186,24 @@ void parseheplatforms()
             platforms[currentPlatform].extraCflags = realloc(platforms[currentPlatform].extraCflags, platforms[currentPlatform].extraCflagCount * sizeof(char *));
             DoSettingString("ExtraCFlag", platforms[currentPlatform].extraCflags[platforms[currentPlatform].extraCflagCount - 1]);
         }
+        if (TextStartsWith(buf, "ExtraCxxFlag"))
+        {
+            platforms[currentPlatform].extraCxxflagCount++;
+            platforms[currentPlatform].extraCxxflags = realloc(platforms[currentPlatform].extraCxxflags, platforms[currentPlatform].extraCxxflagCount * sizeof(char *));
+            DoSettingString("ExtraCxxFlag", platforms[currentPlatform].extraCxxflags[platforms[currentPlatform].extraCxxflagCount - 1]);
+        }
+
+        if (TextStartsWith(buf, "ExtraLDFlag"))
+        {
+            platforms[currentPlatform].extraLDflagCount++;
+            platforms[currentPlatform].extraLDflags = realloc(platforms[currentPlatform].extraLDflags, platforms[currentPlatform].extraLDflagCount * sizeof(char *));
+            DoSettingString("ExtraLDFlag", platforms[currentPlatform].extraLDflags[platforms[currentPlatform].extraLDflagCount - 1]);
+        }
+        
+        EndParsing("HePlatforms", line, buf);
+
         fgets(buf, 512, heplatforms);
+        line++;
     }
 
     fclose(heplatforms);
@@ -171,6 +220,9 @@ void parsehefile()
     while (!feof(hefile))
     {
         line++;
+
+        BeginParsing();
+
         DoSettingString("DefaultPlatform", file.defaultPlatform);
         DoSettingString("DefaultDistDir", file.defaultDistDir);
         DoSettingString("RaylibVersion", file.raylibVersion);
@@ -272,6 +324,13 @@ void parsehefile()
         }
         DoSettingString("ExtraCFlag", file.extraCflags[file.extraCflagCount - 1]);
 
+        if (TextStartsWith(buf, "ExtraCxxFlag"))
+        {
+            file.extraCxxflagCount++;
+            file.extraCxxflags = realloc(file.extraCxxflags, file.extraCxxflagCount * sizeof(char *));
+        }
+        DoSettingString("ExtraCxxFlag", file.extraCxxflags[file.extraCxxflagCount - 1]);
+
         if (TextStartsWith(buf, "ExtraLDFlag"))
         {
             file.extraLDflagCount++;
@@ -285,6 +344,8 @@ void parsehefile()
             file.distData = realloc(file.distData, file.distDataCount * sizeof(char *));
         }
         DoSettingString("DistData", file.distData[file.distDataCount - 1]);
+
+        EndParsing("HeFile", line, buf);
 
         fgets(buf, 512, hefile);
     }
@@ -360,6 +421,14 @@ void genmakefile()
         for (int j = 0; j < platforms[i].extraCflagCount; j++)
         {
             fprintf(makefile, "CFLAGS+=%s\n", platforms[i].extraCflags[j]);
+        }
+        for (int j = 0; j < platforms[i].extraCxxflagCount; j++)
+        {
+            fprintf(makefile, "CXXFLAGS+=%s\n", platforms[i].extraCxxflags[j]);
+        }
+        for (int j = 0; j < platforms[i].extraLDflagCount; j++)
+        {
+            fprintf(makefile, "LDFLAGS+=%s\n", platforms[i].extraLDflags[j]);
         }
         fprintf(makefile, "endif\n\n");
     }
@@ -450,6 +519,10 @@ void genmakefile()
     {
         fprintf(makefile, "CFLAGS+=%s\n", file.extraCflags[i]);
     }
+    for (int i = 0; i < file.extraCxxflagCount; i++)
+    {
+        fprintf(makefile, "CXXFLAGS+=%s\n", file.extraCxxflags[i]);
+    }
     fprintf(makefile, "\n");
 
     for (int i = 0;  i< file.extraLDflagCount; i++)
@@ -520,19 +593,11 @@ void genmakefile()
     if (has_cxx)
     {
         fprintf(makefile, "$(DISTDIR)/%%.o: %%.cpp\n");
-        fprintf(makefile, "\t$(CXX) -c $^ $(CFLAGS) -o $@\n\n");
+        fprintf(makefile, "\t$(CXX) -c $^ $(CFLAGS) $(CXXFLAGS) -o $@\n\n");
     }
 
     fprintf(makefile, "clean:\n");
-    for (int i = 0; i < file.programCount; i++)
-    {
-        for (int j = 0; j < file.programs[i].sourceCount; j++)
-        {
-            fprintf(makefile, "\trm -f $(DISTDIR)/src/%s.o\n", file.programs[i].sources[j].name);
-        }
-        if (file.programs[i].type == PROGRAM_SOURCEGROUP) continue;
-        fprintf(makefile, "\trm -f $(DISTDIR)/%s$(EXEC_EXTENSION)\n", file.programs[i].name);
-    }
+    fprintf(makefile, "\trm -rf $(DISTDIR)/*\n");
 
     fprintf(makefile, "\nall_dist:\n");
     for (int i = 0; i < platformCount; i++)

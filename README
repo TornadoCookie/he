@@ -34,6 +34,8 @@ UseRaylib [bool]: whether or not the project is using raylib.
 Dependency [str]: Add a single-header header-only dependency. The makefile will look in lib/[dependency]/src and lib/[dependency]/include for the header.
 NativeDependency [str]: Add a native dependency. The makefile will look in lib/[dependency]-[platform]/lib for the libraries and lib/[dependency]-[platform]/include for the headers.
 ExtraCFlag [str]: Add an extra flag to GCC.
+ExtraLDFlag [str]: Add an extra flag to GCC when linking.
+ExtraCxxFlag [str]: Add an extra flag to GCC when compiling C++. Note that CFLAGS will also be added.
 DistData [str]: Add a file to be included with distributions.
 
 Program [str]: define a new program.
@@ -50,10 +52,13 @@ Platform [str]: define a new platform.
 
 Under a platform directive:
 ExecExtension [str]: The file extension of an executable targeting this platform.
-LibExtension [str]: The file extension of a library targeting this platform.
+LibExtension [str]: The file extension of a shared/dynamic library targeting this platform.
+StaticLibExtension [str]: The file extension of a static library targeting this platform.
 Compiler [str]: The compiler to use. (Default value of the CC environment variable)
 CxxCompiler [str]: The C++ compiler to use. (Default value of the CXX environment variable)
 RaylibLdFlag [str]: The flag to be added to LDFLAGS when using raylib (on windows it is -lraylibdll while on linux it is just -lraylib.)
 IsRelease [bool]: Whether or not the platform is meant for production. (Add optimization flags)
 IsDebug [bool]: Whether or not the platform is meant for debugging. (Add debugging flags)
 ExtraCFlag [str]: Add an extra flag to GCC for this platform only.
+ExtraCxxFlag [str]: Add an extra C++ flag
+
